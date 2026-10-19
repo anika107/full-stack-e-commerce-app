@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/*
+ * Data-viz tokens (validated categorical palette — do not reorder or re-step;
+ * run scripts/validate_palette.js from the dataviz skill if changing).
+ */
+:root {
+  --viz-surface: #ffffff;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-series-3: #1baf7a;
+  --viz-series-4: #eda100;
+  --viz-series-5: #e87ba4;
+  --viz-series-6: #008300;
+  --viz-ink-muted: #898781;
+  --viz-gridline: #e1e0d9;
+  --viz-baseline: #c3c2b7;
+  --viz-delta-good: #006300;
+  --viz-delta-bad: #d03b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --viz-surface: #18181b;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
+    --viz-series-4: #c98500;
+    --viz-series-5: #d55181;
+    --viz-series-6: #008300;
+    --viz-gridline: #2c2c2a;
+    --viz-baseline: #383835;
+    --viz-delta-good: #0ca30c;
+  }
+}
