@@ -2,12 +2,42 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Icon } from "@/components/admin/icons";
+
+// React 19 deprecates FormEvent — derive the handler's event type from the form itself.
+type FormSubmitEvent = Parameters<NonNullable<React.ComponentProps<"form">["onSubmit"]>>[0];
 
 // Standalone full-screen form — lives outside the (panel) layout, so no sidebar.
 export function LoginForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(event: FormSubmitEvent) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+
+    const formData = new FormData(event.currentTarget);
+    const result = await signIn("credentials", {
+      email: formData.get("email"),
+      password: formData.get("password"),
+      redirect: false,
+    });
+
+    setPending(false);
+
+    if (result?.error) {
+      setError("Invalid email or password.");
+      return;
+    }
+
+    router.push("/admin");
+    router.refresh();
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
@@ -30,14 +60,7 @@ export function LoginForm() {
             Welcome back to Storefront Admin.
           </p>
 
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(e) => {
-              // UI-only for now — no auth backend is wired up yet.
-              e.preventDefault();
-              setSubmitted(true);
-            }}
-          >
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="email"
@@ -52,6 +75,7 @@ export function LoginForm() {
                 />
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   autoComplete="email"
@@ -83,6 +107,7 @@ export function LoginForm() {
                 />
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   autoComplete="current-password"
@@ -111,18 +136,20 @@ export function LoginForm() {
 
             <button
               type="submit"
-              className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+              disabled={pending}
+              className="h-10 w-full rounded-lg bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Sign in
+              {pending ? "Signing in…" : "Sign in"}
             </button>
           </form>
 
-          {submitted ? (
-            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+          {error ? (
+            <div
+              role="alert"
+              className="mt-4 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+            >
               <Icon name="circle-alert" className="mt-px h-3.5 w-3.5 shrink-0" />
-              <p>
-                Sign-in is UI-only for now — the auth flow isn&apos;t wired up yet.
-              </p>
+              <p>{error}</p>
             </div>
           ) : null}
         </div>
@@ -137,7 +164,7 @@ export function LoginForm() {
             Back to store
           </Link>
           <p className="text-xs text-zinc-400 dark:text-zinc-600">
-            Demo access: admin@storefront.dev · any password
+            Demo admin: admin@storefront.dev · storefront123
           </p>
         </div>
       </div>

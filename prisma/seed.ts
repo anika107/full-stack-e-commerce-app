@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { prisma } from "../src/db";
 
 // Seeds the categories, products, and inventory tables with data shaped like
@@ -109,6 +110,23 @@ async function main() {
   console.log(
     `Seeded ${categoryCount} categories, ${productCount} products, ${inventoryCount} inventory rows (${outOfStock} out of stock)`,
   );
+
+  // Admin accounts are always created from outside (never self-registered),
+  // so they're upserted — never wiped by a re-seed.
+  const adminEmail = process.env.ADMIN_SEED_EMAIL ?? "admin@storefront.dev";
+  const adminPassword = process.env.ADMIN_SEED_PASSWORD ?? "storefront123";
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
+      name: "Store Owner",
+      email: adminEmail,
+      passwordHash: await bcrypt.hash(adminPassword, 10),
+      role: "ADMIN",
+    },
+  });
+
+  console.log(`Admin user ready: ${admin.email} (${admin.role.toLowerCase()})`);
 }
 
 main()

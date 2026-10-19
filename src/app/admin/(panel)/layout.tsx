@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth, signOut } from "@/auth";
 import { AdminNav } from "@/components/admin/nav";
 import { Icon } from "@/components/admin/icons";
 
@@ -7,7 +8,21 @@ export const metadata: Metadata = {
   title: { default: "Admin", template: "%s · Storefront Admin" },
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+// The panel reads the session cookie on every request, so it renders
+// per-request instead of being prerendered into the static shell.
+export const instant = false;
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  const user = session?.user ?? null;
+  const initials = user
+    ? user.name
+        .split(" ")
+        .map((part) => part[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
       {/* Sidebar (hidden below md) */}
@@ -34,12 +49,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <div className="flex items-center gap-2.5 rounded-lg bg-zinc-800/50 px-3 py-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-semibold text-zinc-200">
-              AT
+              {initials}
             </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-zinc-200">Store owner</p>
-              <p className="truncate text-xs text-zinc-500">admin@storefront.dev</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-zinc-200">{user?.name}</p>
+              <p className="truncate text-xs text-zinc-500">{user?.email}</p>
             </div>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/admin/login" });
+              }}
+            >
+              <button
+                type="submit"
+                aria-label="Sign out"
+                title="Sign out"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100"
+              >
+                <Icon name="log-out" className="h-3.5 w-3.5" />
+              </button>
+            </form>
           </div>
         </div>
       </aside>
@@ -74,7 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
 
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
-            AT
+            {initials}
           </span>
         </header>
 
