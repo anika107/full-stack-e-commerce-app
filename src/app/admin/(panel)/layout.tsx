@@ -83,27 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             Storefront
           </span>
 
-          <div className="relative ml-auto hidden w-64 sm:block">
-            <Icon
-              name="search"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-            />
-            <input
-              className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:focus:border-zinc-600"
-              placeholder="Search…"
-              aria-label="Search"
-            />
-          </div>
-
-          <button
-            aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            <Icon name="bell" className="h-4 w-4" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-blue-500" />
-          </button>
-
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <span className="ml-auto flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
             {initials}
           </span>
         </header>
