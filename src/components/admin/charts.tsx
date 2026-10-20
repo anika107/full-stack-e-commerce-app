@@ -14,7 +14,13 @@ const PAD = { top: 18, right: 70, bottom: 28, left: 40 };
 const Y_MAX = 20; // $K
 const TICKS = [0, 5, 10, 15, 20];
 
-export function RevenueChart({ data }: { data: RevenuePoint[] }) {
+export function RevenueChart({
+  data,
+  caption = "Monthly revenue, November 2025 through October 2026",
+}: {
+  data: RevenuePoint[];
+  caption?: string;
+}) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -142,7 +148,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
 
       {/* table view: every value reachable without the chart */}
       <table className="sr-only">
-        <caption>Monthly revenue, November 2025 through October 2026</caption>
+        <caption>{caption}</caption>
         <thead>
           <tr>
             <th scope="col">Month</th>

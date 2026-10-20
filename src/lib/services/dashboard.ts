@@ -168,16 +168,38 @@ export const getDashboardKpis = cache(async (rangeKey: RangeKey): Promise<Kpi[]>
 
 export type RevenuePoint = { label: string; value: number };
 
-export const getRevenueSeries = cache(async (): Promise<RevenuePoint[]> => {
-  // Monthly buckets are relative to "now", so this must run at request time.
+const roundK = (value: number) => Math.round((value / 1000) * 10) / 10;
+
+export const getRevenueSeries = cache(async (rangeKey: RangeKey): Promise<RevenuePoint[]> => {
+  // Bucket boundaries are relative to "now", so this must run at request time.
   await connection();
   const orders = await getStatsOrders();
-  const months = bucketByMonth(orders);
-  return months.map((m) => ({
-    label: m.label,
-    value:
-      Math.round((paidRevenue(m.orders) / 1000) * 10) / 10,
-  }));
+  const { days } = RANGES[rangeKey];
+  const now = new Date();
+  const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  if (rangeKey === "12m") {
+    return bucketByMonth(orders).map((m) => ({
+      label: m.label,
+      value: roundK(paidRevenue(m.orders)),
+    }));
+  }
+
+  // Daily buckets for 7d, weekly for 30d/90d. Labels put the distinguishing
+  // part first because the chart's x-axis renders only the first word.
+  const bucketMs =
+    rangeKey === "7d" ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+  const pointCount = Math.ceil((days * 24 * 60 * 60 * 1000) / bucketMs);
+  return Array.from({ length: pointCount }, (_, i) => {
+    const start = new Date(from.getTime() + i * bucketMs);
+    const end = new Date(start.getTime() + bucketMs);
+    const bucketOrders = orders.filter((o) => o.createdAt >= start && o.createdAt < end);
+    const label =
+      rangeKey === "7d"
+        ? start.toLocaleDateString("en-US", { weekday: "short" })
+        : `${start.getDate()} ${start.toLocaleDateString("en-US", { month: "short" })}`;
+    return { label, value: roundK(paidRevenue(bucketOrders)) };
+  });
 });
 
 export type TopCategory = { name: string; revenue: number; share: number };

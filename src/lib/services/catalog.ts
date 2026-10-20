@@ -81,6 +81,37 @@ export const getProductById = cache(async (id: string): Promise<ProductDetail | 
   };
 });
 
+export type InventoryRow = {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  updated: string;
+};
+
+export const getInventory = cache(async (): Promise<InventoryRow[]> => {
+  await verifySession();
+  const items = await prisma.inventory.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: {
+      quantity: true,
+      updatedAt: true,
+      product: { select: { id: true, name: true, category: { select: { name: true } } } },
+    },
+  });
+  return items.map((item) => ({
+    id: item.product.id,
+    name: item.product.name,
+    category: item.product.category?.name ?? "Uncategorized",
+    quantity: item.quantity,
+    updated: item.updatedAt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  }));
+});
+
 export const getProductCategories = cache(async (): Promise<string[]> => {
   await verifySession();
   const categories = await prisma.category.findMany({
