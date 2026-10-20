@@ -39,30 +39,43 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-export function StatTile({ kpi }: { kpi: { label: string; value: string; delta: { direction: "up" | "down"; good: boolean; text: string; period: string }; spark: number[] } }) {
+export function StatTile({
+  kpi,
+}: {
+  kpi: {
+    label: string;
+    value: string;
+    delta?: { direction: "up" | "down"; good: boolean; text: string; period: string } | null;
+    spark?: number[] | null;
+  };
+}) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{kpi.label}</p>
-        <Sparkline data={kpi.spark} />
+        {kpi.spark ? <Sparkline data={kpi.spark} /> : null}
       </div>
       <p className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
         {kpi.value}
       </p>
-      <p className="mt-1 flex items-center gap-1 text-xs">
-        <Icon
-          name={kpi.delta.direction === "up" ? "trending-up" : "trending-down"}
-          className="h-3.5 w-3.5"
-          style={{ color: kpi.delta.good ? "var(--viz-delta-good)" : "var(--viz-delta-bad)" }}
-        />
-        <span
-          className="font-medium"
-          style={{ color: kpi.delta.good ? "var(--viz-delta-good)" : "var(--viz-delta-bad)" }}
-        >
-          {kpi.delta.text}
-        </span>
-        <span className="text-zinc-400 dark:text-zinc-500">{kpi.delta.period}</span>
-      </p>
+      {kpi.delta ? (
+        <p className="mt-1 flex items-center gap-1 text-xs">
+          <Icon
+            name={kpi.delta.direction === "up" ? "trending-up" : "trending-down"}
+            className="h-3.5 w-3.5"
+            style={{ color: kpi.delta.good ? "var(--viz-delta-good)" : "var(--viz-delta-bad)" }}
+          />
+          <span
+            className="font-medium"
+            style={{ color: kpi.delta.good ? "var(--viz-delta-good)" : "var(--viz-delta-bad)" }}
+          >
+            {kpi.delta.text}
+          </span>
+          <span className="text-zinc-400 dark:text-zinc-500">{kpi.delta.period}</span>
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">live count</p>
+      )}
     </div>
   );
 }

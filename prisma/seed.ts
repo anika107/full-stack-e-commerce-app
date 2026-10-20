@@ -2,10 +2,11 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/db";
 
-// Seeds the categories, products, and inventory tables with data shaped like
-// the admin panel's mock catalog (src/lib/admin-data.ts). Run with:
+// Seeds the catalog (categories, products, inventory), demo customers, and
+// 12 months of orders so the admin dashboard can read real data. Run with:
 //   npm run db:seed
-// Safe to re-run: it clears the three tables first (FK order).
+// Safe to re-run: catalog and orders are cleared first (FK order); users are
+// upserted, never wiped.
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
@@ -70,6 +71,8 @@ const PRODUCTS: ProductSeed[] = [
 
 async function main() {
   // Clear in FK order so re-runs are idempotent.
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.inventory.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
@@ -127,6 +130,97 @@ async function main() {
   });
 
   console.log(`Admin user ready: ${admin.email} (${admin.role.toLowerCase()})`);
+
+  await seedCustomersAndOrders();
+}
+
+const CUSTOMER_NAMES = [
+  "Jamie Rivera", "Sam Okafor", "Priya Nair", "Diego Costa", "Lena Fischer",
+  "Tom Becker", "Aya Tanaka", "Marcus Lee", "Sofia Rossi", "Kenji Sato",
+  "Hana Kim", "Omar Haddad", "Emma Novak", "Lucas Meyer", "Nadia Ali",
+  "Felix Braun", "Mira Patel", "Jonas Lind", "Yuki Mori", "Grace Osei",
+  "Ivan Petrov", "Chloe Dubois", "Ravi Menon", "Zoe Walker",
+] as const;
+
+type OrderStatus = "PAID" | "PENDING" | "REFUNDED" | "FAILED";
+
+// Weighted to look like a healthy store: mostly paid, few failed.
+function randomStatus(): OrderStatus {
+  const roll = Math.random();
+  if (roll < 0.75) return "PAID";
+  if (roll < 0.87) return "PENDING";
+  if (roll < 0.95) return "REFUNDED";
+  return "FAILED";
+}
+
+// A random instant within the calendar month `monthsAgo` months before now,
+// clamped to the current time for the running month.
+function randomDateInMonth(monthsAgo: number): Date {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 1);
+  const clampedEnd = end > now ? now : end;
+  return new Date(start.getTime() + Math.random() * (clampedEnd.getTime() - start.getTime()));
+}
+
+async function seedCustomersAndOrders() {
+  // Demo customers are upserted like the admin — never wiped by a re-seed.
+  const customers = [];
+  for (let i = 0; i < CUSTOMER_NAMES.length; i++) {
+    const email = `customer${String(i + 1).padStart(2, "0")}@example.com`;
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        name: CUSTOMER_NAMES[i],
+        email,
+        passwordHash: await bcrypt.hash("customer123", 10),
+        role: "CUSTOMER",
+      },
+    });
+    customers.push(user);
+  }
+
+  const products = await prisma.product.findMany();
+  const productPool = products.map((p) => ({ id: p.id, price: Number(p.price) }));
+
+  // 12 months of orders, growing month over month so the dashboard chart
+  // trends upward like real sales data.
+  const orders = [];
+  const items = [];
+  for (let monthsAgo = 11; monthsAgo >= 0; monthsAgo--) {
+    const count = Math.round(35 + (11 - monthsAgo) * 8 + Math.random() * 6);
+    for (let i = 0; i < count; i++) {
+      const orderId = crypto.randomUUID();
+      const customer = customers[Math.floor(Math.random() * customers.length)];
+      orders.push({
+        id: orderId,
+        customerId: customer.id,
+        status: randomStatus(),
+        createdAt: randomDateInMonth(monthsAgo),
+      });
+
+      // 1–4 distinct items per order, price snapshotted at order time.
+      const itemCount = 1 + Math.floor(Math.random() * 4);
+      const picked = [...productPool].sort(() => Math.random() - 0.5).slice(0, itemCount);
+      for (const product of picked) {
+        items.push({
+          id: crypto.randomUUID(),
+          orderId,
+          productId: product.id,
+          quantity: 1 + Math.floor(Math.random() * 3),
+          unitPrice: product.price,
+        });
+      }
+    }
+  }
+
+  await prisma.order.createMany({ data: orders });
+  await prisma.orderItem.createMany({ data: items });
+
+  console.log(
+    `Seeded ${customers.length} demo customers, ${orders.length} orders, ${items.length} order items`,
+  );
 }
 
 main()
