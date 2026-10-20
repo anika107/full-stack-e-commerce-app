@@ -9,6 +9,8 @@ export type ProductFormState = { ok: boolean; error?: string };
 
 type ParsedProduct = {
   name: string;
+  imageUrl: string;
+  description: string;
   price: number;
   categoryId: string | null;
   stock: number;
@@ -18,6 +20,18 @@ function parseForm(formData: FormData): ParsedProduct | ProductFormState {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { ok: false, error: "Name is required." };
   if (name.length > 200) return { ok: false, error: "Name must be 200 characters or fewer." };
+
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  if (!imageUrl) return { ok: false, error: "Image URL is required." };
+  if (imageUrl.length > 500) return { ok: false, error: "Image URL must be 500 characters or fewer." };
+  try {
+    const parsed = new URL(imageUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { ok: false, error: "Image URL must start with http:// or https://." };
+    }
+  } catch {
+    return { ok: false, error: "Image URL is not a valid URL." };
+  }
 
   const price = Number(formData.get("price"));
   if (!Number.isFinite(price) || price <= 0) {
@@ -29,8 +43,21 @@ function parseForm(formData: FormData): ParsedProduct | ProductFormState {
     return { ok: false, error: "Stock must be a whole number of 0 or more." };
   }
 
+  const description = String(formData.get("description") ?? "").trim();
+  if (!description) return { ok: false, error: "Description is required." };
+  if (description.length > 2000) {
+    return { ok: false, error: "Description must be 2,000 characters or fewer." };
+  }
+
   const categoryId = String(formData.get("categoryId") ?? "");
-  return { name, price: Math.round(price * 100) / 100, categoryId: categoryId || null, stock };
+  return {
+    name,
+    imageUrl,
+    description,
+    price: Math.round(price * 100) / 100,
+    categoryId: categoryId || null,
+    stock,
+  };
 }
 
 // Only allow redirects back into the products list.
@@ -51,6 +78,8 @@ export async function createProduct(
     prisma.product.create({
       data: {
         name: parsed.name,
+        imageUrl: parsed.imageUrl,
+        description: parsed.description,
         price: parsed.price,
         categoryId: parsed.categoryId,
         inventory: { create: { quantity: parsed.stock } },
@@ -76,7 +105,13 @@ export async function updateProduct(
   await prisma.$transaction([
     prisma.product.update({
       where: { id },
-      data: { name: parsed.name, price: parsed.price, categoryId: parsed.categoryId },
+      data: {
+        name: parsed.name,
+        imageUrl: parsed.imageUrl,
+        description: parsed.description,
+        price: parsed.price,
+        categoryId: parsed.categoryId,
+      },
     }),
     prisma.inventory.upsert({
       where: { productId: id },

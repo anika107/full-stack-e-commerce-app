@@ -12,6 +12,7 @@ const INITIAL_STATE: CartActionState = { ok: false };
 export function CartLineItem({
   productId,
   name,
+  imageUrl,
   category,
   price,
   stock,
@@ -20,6 +21,7 @@ export function CartLineItem({
 }: {
   productId: string;
   name: string;
+  imageUrl: string;
   category: string;
   price: number;
   stock: number;
@@ -32,7 +34,7 @@ export function CartLineItem({
   return (
     <li className="flex gap-5 py-6">
       <Link href={`/products/${productId}`} className="shrink-0">
-        <ProductImage category={category} name={name} className="h-24 w-24 rounded-2xl" />
+        <ProductImage category={category} name={name} imageUrl={imageUrl} className="h-24 w-24 rounded-2xl" />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-start justify-between gap-3">

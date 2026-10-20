@@ -55,6 +55,8 @@ export const getCategories = cache(async (): Promise<CategoryRow[]> => {
 export type ProductDetail = {
   id: string;
   name: string;
+  imageUrl: string;
+  description: string;
   price: number;
   categoryId: string | null;
   stock: number;
@@ -67,6 +69,8 @@ export const getProductById = cache(async (id: string): Promise<ProductDetail | 
     select: {
       id: true,
       name: true,
+      imageUrl: true,
+      description: true,
       price: true,
       categoryId: true,
       inventory: { select: { quantity: true } },
@@ -76,6 +80,8 @@ export const getProductById = cache(async (id: string): Promise<ProductDetail | 
   return {
     id: product.id,
     name: product.name,
+    imageUrl: product.imageUrl,
+    description: product.description,
     price: Number(product.price),
     categoryId: product.categoryId,
     stock: product.inventory?.quantity ?? 0,
@@ -119,6 +125,8 @@ export const getInventory = cache(async (): Promise<InventoryRow[]> => {
 export type StorefrontProduct = {
   id: string;
   name: string;
+  imageUrl: string;
+  description: string;
   price: number;
   category: string;
   stock: number;
@@ -175,6 +183,8 @@ export const getStorefrontProducts = cache(
         select: {
           id: true,
           name: true,
+          imageUrl: true,
+          description: true,
           price: true,
           createdAt: true,
           category: { select: { name: true } },
@@ -187,6 +197,8 @@ export const getStorefrontProducts = cache(
       rows: products.map((p) => ({
         id: p.id,
         name: p.name,
+        imageUrl: p.imageUrl,
+        description: p.description,
         price: Number(p.price),
         category: p.category?.name ?? "Uncategorized",
         stock: p.inventory?.quantity ?? 0,
@@ -205,6 +217,8 @@ export const getProductDetail = cache(async (id: string): Promise<StorefrontProd
     select: {
       id: true,
       name: true,
+      imageUrl: true,
+      description: true,
       price: true,
       createdAt: true,
       category: { select: { name: true } },
@@ -215,6 +229,8 @@ export const getProductDetail = cache(async (id: string): Promise<StorefrontProd
   return {
     id: product.id,
     name: product.name,
+    imageUrl: product.imageUrl,
+    description: product.description,
     price: Number(product.price),
     category: product.category?.name ?? "Uncategorized",
     stock: product.inventory?.quantity ?? 0,
@@ -237,6 +253,8 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<StorefrontPr
     select: {
       id: true,
       name: true,
+      imageUrl: true,
+      description: true,
       price: true,
       createdAt: true,
       category: { select: { name: true } },
@@ -250,6 +268,8 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<StorefrontPr
     .map((p) => ({
       id: p.id,
       name: p.name,
+      imageUrl: p.imageUrl,
+      description: p.description,
       price: Number(p.price),
       category: p.category?.name ?? "Uncategorized",
       stock: p.inventory?.quantity ?? 0,
@@ -265,6 +285,8 @@ export const getNewArrivals = cache(async (limit = 4): Promise<StorefrontProduct
     select: {
       id: true,
       name: true,
+      imageUrl: true,
+      description: true,
       price: true,
       createdAt: true,
       category: { select: { name: true } },
@@ -274,6 +296,8 @@ export const getNewArrivals = cache(async (limit = 4): Promise<StorefrontProduct
   return products.map((p) => ({
     id: p.id,
     name: p.name,
+    imageUrl: p.imageUrl,
+    description: p.description,
     price: Number(p.price),
     category: p.category?.name ?? "Uncategorized",
     stock: p.inventory?.quantity ?? 0,
@@ -304,6 +328,7 @@ export const getProductCategories = cache(async (): Promise<string[]> => {
 export type ProductRow = {
   id: string;
   name: string;
+  imageUrl: string;
   category: string;
   price: number;
   stock: number;
@@ -343,6 +368,7 @@ export const getProducts = cache(
         select: {
           id: true,
           name: true,
+          imageUrl: true,
           price: true,
           createdAt: true,
           category: { select: { name: true } },
@@ -355,6 +381,7 @@ export const getProducts = cache(
       rows: products.map((p) => ({
         id: p.id,
         name: p.name,
+        imageUrl: p.imageUrl,
         category: p.category?.name ?? "Uncategorized",
         price: Number(p.price),
         stock: p.inventory?.quantity ?? 0,

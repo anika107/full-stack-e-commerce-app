@@ -59,20 +59,9 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
           <ProductImage
             category={product.category}
             name={product.name}
+            imageUrl={product.imageUrl}
             className="aspect-square w-full rounded-4xl shadow-[0_24px_48px_-24px_rgba(28,25,23,0.25)]"
           />
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {[0, 1, 2].map((i) => (
-              <ProductImage
-                key={i}
-                category={product.category}
-                name={`${product.name} view ${i + 1}`}
-                className={`aspect-square rounded-2xl transition-opacity hover:opacity-100 ${
-                  i === 0 ? "opacity-100 ring-2 ring-stone-950/20 dark:ring-stone-50/20" : "opacity-50"
-                }`}
-              />
-            ))}
-          </div>
         </div>
 
         <div className="flex flex-col">
@@ -106,7 +95,16 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
             <AddToCart productId={product.id} stock={product.stock} />
           </div>
 
-          <dl className="mt-10 space-y-4 border-t border-stone-200 pt-7 text-sm dark:border-stone-800">
+          <div className="mt-9 border-t border-stone-200 pt-6 dark:border-stone-800">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+              About this product
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+              {product.description}
+            </p>
+          </div>
+
+          <dl className="mt-9 space-y-4 border-t border-stone-200 pt-6 text-sm dark:border-stone-800">
             <div className="flex justify-between gap-4">
               <dt className="text-stone-500 dark:text-stone-400">Category</dt>
               <dd className="font-medium text-stone-900 dark:text-stone-50">

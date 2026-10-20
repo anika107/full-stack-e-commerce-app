@@ -20,7 +20,15 @@ export function ProductFormPanel({
   mode: "new" | "edit";
   categories: CategoryOption[];
   returnTo: string;
-  initial?: { id: string; name: string; price: number; categoryId: string | null; stock: number };
+  initial?: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    description: string;
+    price: number;
+    categoryId: string | null;
+    stock: number;
+  };
 }) {
   const action = mode === "new" ? createProduct : updateProduct;
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
@@ -55,6 +63,30 @@ export function ProductFormPanel({
             defaultValue={initial?.name}
             placeholder="Product name"
             className={fieldClass}
+          />
+        </label>
+        <label className="block sm:col-span-2 xl:col-span-2">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Image URL</span>
+          <input
+            name="imageUrl"
+            type="url"
+            required
+            defaultValue={initial?.imageUrl}
+            placeholder="https://…"
+            className={fieldClass}
+          />
+        </label>
+        <label className="block sm:col-span-2 xl:col-span-4">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            Description
+          </span>
+          <textarea
+            name="description"
+            required
+            rows={3}
+            defaultValue={initial?.description}
+            placeholder="What makes this product worth buying?"
+            className="w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:border-zinc-600"
           />
         </label>
         <label className="block">

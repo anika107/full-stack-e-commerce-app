@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/format";
 type CardProduct = {
   id: string;
   name: string;
+  imageUrl: string;
   price: number;
   category: string;
   stock: number;
@@ -34,6 +35,7 @@ export function ProductCard({
         <ProductImage
           category={product.category}
           name={product.name}
+          imageUrl={product.imageUrl}
           className="aspect-4/5 w-full transition-transform duration-500 group-hover:scale-[1.04]"
         />
         {isNew ? (

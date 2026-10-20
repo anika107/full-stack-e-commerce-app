@@ -45,6 +45,7 @@ export const readCartLines = cache(async (): Promise<CartLine[]> => {
 export type CartItem = {
   productId: string;
   name: string;
+  imageUrl: string;
   category: string;
   price: number;
   stock: number;
@@ -71,6 +72,7 @@ export const getCartDetails = cache(async (): Promise<CartDetails> => {
     select: {
       id: true,
       name: true,
+      imageUrl: true,
       price: true,
       category: { select: { name: true } },
       inventory: { select: { quantity: true } },
@@ -89,6 +91,7 @@ export const getCartDetails = cache(async (): Promise<CartDetails> => {
       {
         productId: product.id,
         name: product.name,
+        imageUrl: product.imageUrl,
         category: product.category?.name ?? "Uncategorized",
         price,
         stock,
