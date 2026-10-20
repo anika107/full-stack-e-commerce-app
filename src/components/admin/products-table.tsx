@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DeleteProductButton } from "./product-form";
 import { Icon } from "./icons";
-import { NavSelect } from "./nav-select";
+import { NavSelect } from "@/components/ui/nav-select";
 import { Td, Th } from "./ui/table";
 import type { getProducts } from "@/lib/services";
 

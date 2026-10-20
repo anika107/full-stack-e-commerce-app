@@ -1,4 +1,4 @@
-import { NavSelect } from "./nav-select";
+import { NavSelect } from "@/components/ui/nav-select";
 
 const OPTIONS = [
   { value: "7d", label: "Last 7 days" },

@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { connection } from "next/server";
 import { prisma } from "@/db";
 import { verifySession } from "./auth";
 
@@ -110,6 +111,185 @@ export const getInventory = cache(async (): Promise<InventoryRow[]> => {
       year: "numeric",
     }),
   }));
+});
+
+// --- Storefront (public) reads -------------------------------------------------
+// Same catalog data, no admin gate: the storefront serves these to visitors.
+
+export type StorefrontProduct = {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  stock: number;
+  createdAt: Date;
+};
+
+export type StorefrontProductsResult = {
+  rows: StorefrontProduct[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ProductSort = "newest" | "price-asc" | "price-desc";
+
+export const PRODUCT_SORTS: Record<ProductSort, { label: string }> = {
+  newest: { label: "Newest" },
+  "price-asc": { label: "Price: low to high" },
+  "price-desc": { label: "Price: high to low" },
+};
+
+export const isProductSort = (value: string): value is ProductSort => value in PRODUCT_SORTS;
+
+export const getStorefrontProducts = cache(
+  async ({
+    q = "",
+    category = "all",
+    sort = "newest",
+    page = 1,
+    pageSize = 12,
+  }: {
+    q?: string;
+    category?: string;
+    sort?: ProductSort;
+    page?: number;
+    pageSize?: number;
+  }): Promise<StorefrontProductsResult> => {
+    const where = {
+      ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+      ...(category !== "all" ? { category: { name: category } } : {}),
+    };
+    const orderBy =
+      sort === "price-asc"
+        ? { price: "asc" as const }
+        : sort === "price-desc"
+          ? { price: "desc" as const }
+          : { createdAt: "desc" as const };
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          createdAt: true,
+          category: { select: { name: true } },
+          inventory: { select: { quantity: true } },
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+    return {
+      rows: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        category: p.category?.name ?? "Uncategorized",
+        stock: p.inventory?.quantity ?? 0,
+        createdAt: p.createdAt,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  },
+);
+
+export const getProductDetail = cache(async (id: string): Promise<StorefrontProduct | null> => {
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      createdAt: true,
+      category: { select: { name: true } },
+      inventory: { select: { quantity: true } },
+    },
+  });
+  if (!product) return null;
+  return {
+    id: product.id,
+    name: product.name,
+    price: Number(product.price),
+    category: product.category?.name ?? "Uncategorized",
+    stock: product.inventory?.quantity ?? 0,
+    createdAt: product.createdAt,
+  };
+});
+
+// "Featured" = best sellers by units ordered; "new arrivals" = newest listings.
+export const getFeaturedProducts = cache(async (limit = 8): Promise<StorefrontProduct[]> => {
+  // Home-page data has no request-time API of its own, so mark it explicitly.
+  await connection();
+  const bestSellers = await prisma.orderItem.groupBy({
+    by: ["productId"],
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: limit,
+  });
+  const products = await prisma.product.findMany({
+    where: { id: { in: bestSellers.map((row) => row.productId) } },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      createdAt: true,
+      category: { select: { name: true } },
+      inventory: { select: { quantity: true } },
+    },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  return bestSellers
+    .map((row) => byId.get(row.productId))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      category: p.category?.name ?? "Uncategorized",
+      stock: p.inventory?.quantity ?? 0,
+      createdAt: p.createdAt,
+    }));
+});
+
+export const getNewArrivals = cache(async (limit = 4): Promise<StorefrontProduct[]> => {
+  await connection();
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      createdAt: true,
+      category: { select: { name: true } },
+      inventory: { select: { quantity: true } },
+    },
+  });
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    price: Number(p.price),
+    category: p.category?.name ?? "Uncategorized",
+    stock: p.inventory?.quantity ?? 0,
+    createdAt: p.createdAt,
+  }));
+});
+
+export type PublicCategory = { id: string; name: string; count: number };
+
+export const getPublicCategories = cache(async (): Promise<PublicCategory[]> => {
+  await connection();
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, _count: { select: { products: true } } },
+  });
+  return categories.map((c) => ({ id: c.id, name: c.name, count: c._count.products }));
 });
 
 export const getProductCategories = cache(async (): Promise<string[]> => {

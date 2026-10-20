@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getOrders, isOrderStatus } from "@/lib/services";
-import { NavSelect } from "@/components/admin/nav-select";
+import { NavSelect } from "@/components/ui/nav-select";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { OrdersSkeleton } from "@/components/skeletons";
