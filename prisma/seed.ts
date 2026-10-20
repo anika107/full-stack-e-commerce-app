@@ -116,8 +116,8 @@ async function main() {
 
   // Admin accounts are always created from outside (never self-registered),
   // so they're upserted — never wiped by a re-seed.
-  const adminEmail = process.env.ADMIN_SEED_EMAIL ?? "admin@storefront.dev";
-  const adminPassword = process.env.ADMIN_SEED_PASSWORD ?? "storefront123";
+  const adminEmail = process.env.ADMIN_SEED_EMAIL ?? "admin@gmail.com";
+  const adminPassword = process.env.ADMIN_SEED_PASSWORD ?? "admin123";
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},

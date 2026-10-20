@@ -47,7 +47,7 @@ export function LoginForm() {
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
             <Icon name="package" className="h-5 w-5 text-white" />
           </span>
-          <span className="text-base font-semibold">Storefront</span>
+          <span className="text-base font-semibold">ShopPilot</span>
           <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             Admin
           </span>
@@ -57,7 +57,7 @@ export function LoginForm() {
         <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-lg font-semibold tracking-tight">Sign in to your account</h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Welcome back to Storefront Admin.
+            Welcome back to ShopPilot Admin.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -79,7 +79,7 @@ export function LoginForm() {
                   type="email"
                   required
                   autoComplete="email"
-                  placeholder="admin@storefront.dev"
+                  placeholder="admin@gmail.com"
                   className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-blue-500 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:border-blue-500"
                 />
               </div>
@@ -164,7 +164,7 @@ export function LoginForm() {
             Back to store
           </Link>
           <p className="text-xs text-zinc-400 dark:text-zinc-600">
-            Demo admin: admin@storefront.dev · storefront123
+            Demo admin: admin@gmail.com · admin123
           </p>
         </div>
       </div>

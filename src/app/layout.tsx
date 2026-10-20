@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Storefront", template: "%s · Storefront" },
+  title: { default: "ShopPilot", template: "%s · ShopPilot" },
   description: "A modern e-commerce store built with Next.js.",
 };
 

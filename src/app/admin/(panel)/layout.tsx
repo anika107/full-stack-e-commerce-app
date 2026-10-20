@@ -5,7 +5,7 @@ import { AdminNav } from "@/components/admin/nav";
 import { Icon } from "@/components/admin/icons";
 
 export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s · Storefront Admin" },
+  title: { default: "Admin", template: "%s · ShopPilot Admin" },
 };
 
 // The panel reads the session cookie on every request, so it renders
@@ -31,7 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
             <Icon name="package" className="h-4.5 w-4.5 text-white" />
           </span>
-          <span className="text-sm font-semibold text-white">Storefront</span>
+          <span className="text-sm font-semibold text-white">ShopPilot</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
             Admin
           </span>
@@ -80,7 +80,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white">
               <Icon name="package" className="h-4 w-4" />
             </span>
-            Storefront
+            ShopPilot
           </span>
 
           <span className="ml-auto flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
