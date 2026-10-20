@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getProductCategories, getProducts } from "@/lib/services";
-import { Button } from "@/components/admin/ui/button";
+import { getCategories, getProductById, getProducts } from "@/lib/services";
+import { DeleteProductButton, ProductFormPanel } from "@/components/admin/product-form";
 import { Icon } from "@/components/admin/icons";
 import { NavSelect } from "@/components/admin/nav-select";
 import { PageHeader } from "@/components/admin/ui/page-header";
@@ -29,7 +29,7 @@ function ProductsSkeleton() {
 export default function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; page?: string; new?: string; edit?: string }>;
 }) {
   return (
     <Suspense fallback={<ProductsSkeleton />}>
@@ -41,31 +41,37 @@ export default function Page({
 async function ProductsTable({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; page?: string; new?: string; edit?: string }>;
 }) {
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const page = Math.max(1, Number(params.page) || 1);
 
   const [categories, { rows, total, pageSize }] = await Promise.all([
-    getProductCategories(),
+    getCategories(),
     getProducts({ q, category: params.category ?? "all", page, pageSize: PAGE_SIZE }),
   ]);
 
-  const category = params.category && categories.includes(params.category) ? params.category : "all";
+  const categoryNames = categories.map((c) => c.name);
+  const category =
+    params.category && categoryNames.includes(params.category) ? params.category : "all";
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const clampedPage = Math.min(page, totalPages);
   const from = total === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
   const to = Math.min(clampedPage * pageSize, total);
 
-  const href = (target: number) => {
+  const href = (target: number, extra: Record<string, string> = {}) => {
     const search = new URLSearchParams();
     if (q) search.set("q", q);
     if (category !== "all") search.set("category", category);
     if (target > 1) search.set("page", String(target));
+    for (const [key, value] of Object.entries(extra)) search.set(key, value);
     const qs = search.toString();
     return qs ? `/admin/products?${qs}` : "/admin/products";
   };
+
+  const returnTo = href(clampedPage);
+  const editing = params.edit ? await getProductById(params.edit) : undefined;
 
   return (
     <div className="space-y-6">
@@ -73,12 +79,30 @@ async function ProductsTable({
         title="Products"
         description="Manage your catalog, pricing, and listings."
         actions={
-          <Button>
+          <Link
+            href={href(clampedPage, { new: "1" })}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-zinc-900 px-3.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+          >
             <Icon name="plus" className="h-4 w-4" />
             Add product
-          </Button>
+          </Link>
         }
       />
+
+      {params.new === "1" ? (
+        <ProductFormPanel mode="new" categories={categories} returnTo={returnTo} />
+      ) : params.edit ? (
+        editing ? (
+          <ProductFormPanel mode="edit" categories={categories} returnTo={returnTo} initial={editing} />
+        ) : (
+          <p className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            Product not found.{" "}
+            <Link href={returnTo} className="font-medium text-blue-600 dark:text-blue-400">
+              Back to products
+            </Link>
+          </p>
+        )
+      ) : null}
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         {/* Toolbar */}
@@ -100,7 +124,10 @@ async function ProductsTable({
           <NavSelect
             param="category"
             value={category}
-            options={[{ value: "all", label: "All categories" }, ...categories.map((c) => ({ value: c, label: c }))]}
+            options={[
+              { value: "all", label: "All categories" },
+              ...categoryNames.map((name) => ({ value: name, label: name })),
+            ]}
             ariaLabel="Filter by category"
             resetParams={["page"]}
           />
@@ -118,6 +145,7 @@ async function ProductsTable({
                 <Th right>Price</Th>
                 <Th right>Stock</Th>
                 <Th>Updated</Th>
+                <Th className="w-20" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -125,7 +153,7 @@ async function ProductsTable({
                 <tr key={p.id} className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                   <Td>
                     <p className="font-medium text-zinc-900 dark:text-zinc-50">{p.name}</p>
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500">{p.id}</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500">{p.id.slice(0, 8)}</p>
                   </Td>
                   <Td>{p.category}</Td>
                   <Td right className="font-medium text-zinc-900 dark:text-zinc-50">
@@ -133,11 +161,23 @@ async function ProductsTable({
                   </Td>
                   <Td right>{p.stock}</Td>
                   <Td className="whitespace-nowrap text-zinc-500 dark:text-zinc-400">{p.updated}</Td>
+                  <Td>
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={href(clampedPage, { edit: p.id })}
+                        aria-label={`Edit ${p.name}`}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                      >
+                        <Icon name="pencil" className="h-3.5 w-3.5" />
+                      </Link>
+                      <DeleteProductButton id={p.id} name={p.name} returnTo={returnTo} />
+                    </div>
+                  </Td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     No products match your search.
                   </td>
                 </tr>

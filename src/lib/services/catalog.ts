@@ -51,6 +51,36 @@ export const getCategories = cache(async (): Promise<CategoryRow[]> => {
   }));
 });
 
+export type ProductDetail = {
+  id: string;
+  name: string;
+  price: number;
+  categoryId: string | null;
+  stock: number;
+};
+
+export const getProductById = cache(async (id: string): Promise<ProductDetail | null> => {
+  await verifySession();
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      categoryId: true,
+      inventory: { select: { quantity: true } },
+    },
+  });
+  if (!product) return null;
+  return {
+    id: product.id,
+    name: product.name,
+    price: Number(product.price),
+    categoryId: product.categoryId,
+    stock: product.inventory?.quantity ?? 0,
+  };
+});
+
 export const getProductCategories = cache(async (): Promise<string[]> => {
   await verifySession();
   const categories = await prisma.category.findMany({
@@ -112,7 +142,7 @@ export const getProducts = cache(
     ]);
     return {
       rows: products.map((p) => ({
-        id: p.id.slice(0, 8),
+        id: p.id,
         name: p.name,
         category: p.category?.name ?? "Uncategorized",
         price: Number(p.price),
