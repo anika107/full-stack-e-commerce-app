@@ -14,6 +14,43 @@ export const getLowStock = cache(async (): Promise<LowStockItem[]> => {
   return items.map((item) => ({ id: item.product.id.slice(0, 8), name: item.product.name }));
 });
 
+export type CategoryRow = {
+  id: string;
+  name: string;
+  count: number;
+  revenue: number;
+};
+
+export const getCategories = cache(async (): Promise<CategoryRow[]> => {
+  await verifySession();
+  const [categories, items] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, _count: { select: { products: true } } },
+    }),
+    // Revenue = paid order items, aggregated per category in JS (fine at
+    // this scale; a GROUP BY would replace this if the catalog grew).
+    prisma.orderItem.findMany({
+      where: { order: { status: "PAID" } },
+      select: { quantity: true, unitPrice: true, product: { select: { categoryId: true } } },
+    }),
+  ]);
+
+  const revenueByCategory = new Map<string, number>();
+  for (const item of items) {
+    if (!item.product.categoryId) continue;
+    const amount = Number(item.unitPrice) * item.quantity;
+    revenueByCategory.set(item.product.categoryId, (revenueByCategory.get(item.product.categoryId) ?? 0) + amount);
+  }
+
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    count: c._count.products,
+    revenue: revenueByCategory.get(c.id) ?? 0,
+  }));
+});
+
 export const getProductCategories = cache(async (): Promise<string[]> => {
   await verifySession();
   const categories = await prisma.category.findMany({
