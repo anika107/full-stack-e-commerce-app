@@ -40,7 +40,7 @@ function returnTo(formData: FormData): string {
 }
 
 export async function createProduct(
-  _prevState: ProductFormState,
+  prevState: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
   await verifySession();
@@ -63,7 +63,7 @@ export async function createProduct(
 }
 
 export async function updateProduct(
-  _prevState: ProductFormState,
+  prevState: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
   await verifySession();
@@ -90,7 +90,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(
-  _prevState: ProductFormState,
+  prevState: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
   await verifySession();

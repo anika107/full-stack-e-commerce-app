@@ -17,7 +17,7 @@ async function validate(formData: FormData): Promise<{ name: string; id?: string
 }
 
 export async function createCategory(
-  _prevState: CategoryFormState,
+  prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
   await verifySession();
@@ -38,7 +38,7 @@ export async function createCategory(
 }
 
 export async function renameCategory(
-  _prevState: CategoryFormState,
+  prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
   await verifySession();
