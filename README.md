@@ -72,7 +72,7 @@ A full-stack e-commerce application with a modern storefront and a complete admi
 
 | | |
 |---|---|
-| **URL** | [http://localhost:3000/admin/login](http://localhost:3000/admin/login) |
+| **URL** | [https://shop-pilot.vercel.app/admin/login](https://shop-pilot.vercel.app/admin/login) |
 | **Email** | `admin@gmail.com` |
 | **Password** | `admin123` |
 
