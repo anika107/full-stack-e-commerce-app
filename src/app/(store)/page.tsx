@@ -4,18 +4,12 @@ import { Suspense } from "react";
 import { getFeaturedProducts, getNewArrivals, getPublicCategories } from "@/lib/services";
 import { ProductCard } from "@/components/storefront/product-card";
 import { ProductImage } from "@/components/storefront/product-image";
-import { Icon, type IconName } from "@/components/admin/icons";
+import { CATEGORY_ICONS, Icon } from "@/components/admin/icons";
 import { StorefrontGridSkeleton } from "@/components/skeletons";
 
-export const metadata: Metadata = { title: "ShopPilot — Thoughtful tech for everyday life" };
-
-const CATEGORY_ICONS: Record<string, IconName> = {
-  Audio: "speaker",
-  Wearables: "watch",
-  "Smart Home": "home",
-  Accessories: "plug",
-  Gaming: "gamepad",
-  Cameras: "camera",
+// Absolute title: the root layout template would otherwise append "· ShopPilot".
+export const metadata: Metadata = {
+  title: { absolute: "ShopPilot — Thoughtful tech for everyday life" },
 };
 
 export default function Page() {
@@ -207,7 +201,7 @@ async function NewArrivalsGrid() {
   return (
     <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} showNew />
+        <ProductCard key={p.id} product={p} />
       ))}
     </div>
   );

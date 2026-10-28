@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { getOrders, isOrderStatus } from "@/lib/services";
+import { getOrders, ORDER_STATUS_META, ORDER_STATUSES } from "@/lib/services";
 import { NavSelect } from "@/components/ui/nav-select";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { OrdersSkeleton } from "@/components/skeletons";
+import { firstParam } from "@/lib/url";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Orders" };
 
 const FILTERS = [
   { value: "all", label: "All orders" },
-  { value: "PAID", label: "Paid" },
-  { value: "PENDING", label: "Pending" },
-  { value: "REFUNDED", label: "Refunded" },
-  { value: "FAILED", label: "Failed" },
+  ...ORDER_STATUSES.map((status) => ({ value: status, label: ORDER_STATUS_META[status].label })),
 ];
 
 const PAGE_SIZE = 20;
@@ -36,10 +35,11 @@ async function Orders({
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const status = params.status && isOrderStatus(params.status) ? params.status : "all";
-  const page = Math.max(1, Number(params.page) || 1);
-
-  const result = await getOrders({ status, page, pageSize: PAGE_SIZE });
+  const result = await getOrders({
+    status: firstParam(params.status),
+    page: parsePage(firstParam(params.page)),
+    pageSize: PAGE_SIZE,
+  });
 
   return (
     <div className="space-y-6">
@@ -49,14 +49,14 @@ async function Orders({
         actions={
           <NavSelect
             param="status"
-            value={status}
+            value={result.status}
             options={FILTERS}
             ariaLabel="Filter orders"
             resetParams={["page"]}
           />
         }
       />
-      <OrdersTable result={result} status={status} />
+      <OrdersTable result={result} />
     </div>
   );
 }

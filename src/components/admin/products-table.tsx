@@ -2,47 +2,37 @@ import Link from "next/link";
 import { DeleteProductButton } from "./product-form";
 import { Icon } from "./icons";
 import { NavSelect } from "@/components/ui/nav-select";
+import { Pagination } from "@/components/ui/pagination";
 import { Td, Th } from "./ui/table";
+import { buildUrl } from "@/lib/url";
+import { pageWindow } from "@/lib/pagination";
+import { formatMoney } from "@/lib/format";
 import type { getProducts } from "@/lib/services";
 
 type ProductsResult = Awaited<ReturnType<typeof getProducts>>;
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
 // Toolbar (search + category filter), product table with row actions, and
-// pagination. Filters arrive as props so the component stays presentational;
-// all navigation is URL-driven.
+// pagination. Filters arrive in `result` (normalized by the service) so the
+// component stays presentational; all navigation is URL-driven.
 export function ProductsTable({
   result,
-  q,
-  category,
   categoryNames,
 }: {
   result: ProductsResult;
-  q: string;
-  category: string;
   categoryNames: string[];
 }) {
-  const { rows, total, page, pageSize } = result;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const clampedPage = Math.min(page, totalPages);
-  const from = total === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
-  const to = Math.min(clampedPage * pageSize, total);
+  const { rows, total, page, pageSize, q, category } = result;
+  const { from, to } = pageWindow(total, page, pageSize);
 
-  const href = (target: number, extra: Record<string, string> = {}) => {
-    const search = new URLSearchParams();
-    if (q) search.set("q", q);
-    if (category !== "all") search.set("category", category);
-    if (target > 1) search.set("page", String(target));
-    for (const [key, value] of Object.entries(extra)) search.set(key, value);
-    const qs = search.toString();
-    return qs ? `/admin/products?${qs}` : "/admin/products";
-  };
+  const href = (target: number, extra: Record<string, string> = {}) =>
+    buildUrl("/admin/products", {
+      q: q || undefined,
+      category: category === "all" ? undefined : category,
+      page: target > 1 ? target : undefined,
+      ...extra,
+    });
 
-  const returnTo = href(clampedPage);
+  const returnTo = href(page);
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -98,14 +88,14 @@ export function ProductsTable({
                 </Td>
                 <Td>{p.category}</Td>
                 <Td right className="font-medium text-zinc-900 dark:text-zinc-50">
-                  {money.format(p.price)}
+                  {formatMoney(p.price)}
                 </Td>
                 <Td right>{p.stock}</Td>
                 <Td className="whitespace-nowrap text-zinc-500 dark:text-zinc-400">{p.updated}</Td>
                 <Td>
                   <div className="flex items-center justify-end gap-1">
                     <Link
-                      href={href(clampedPage, { edit: p.id })}
+                      href={href(page, { edit: p.id })}
                       aria-label={`Edit ${p.name}`}
                       className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                     >
@@ -128,36 +118,8 @@ export function ProductsTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Page {clampedPage} of {totalPages}
-        </p>
-        <div className="flex gap-1">
-          {clampedPage > 1 ? (
-            <Link
-              href={href(clampedPage - 1)}
-              className="flex h-8 items-center gap-1 rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              Previous
-            </Link>
-          ) : (
-            <span className="flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-300 dark:border-zinc-800 dark:text-zinc-600">
-              Previous
-            </span>
-          )}
-          {clampedPage < totalPages ? (
-            <Link
-              href={href(clampedPage + 1)}
-              className="flex h-8 items-center gap-1 rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              Next
-            </Link>
-          ) : (
-            <span className="flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-300 dark:border-zinc-800 dark:text-zinc-600">
-              Next
-            </span>
-          )}
-        </div>
+      <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <Pagination total={total} page={page} pageSize={pageSize} hrefFor={href} />
       </div>
     </div>
   );

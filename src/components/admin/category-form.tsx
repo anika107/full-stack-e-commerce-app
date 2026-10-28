@@ -1,20 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState, useActionState } from "react";
-import { createCategory, renameCategory, type CategoryFormState } from "@/app/admin/(panel)/categories/actions";
+import { useRef, useState, useActionState } from "react";
+import { createCategory, renameCategory } from "@/app/admin/(panel)/categories/actions";
+import type { ActionState } from "@/lib/types";
 import { Button } from "./ui/button";
 import { Icon } from "./icons";
 
-const INITIAL_STATE: CategoryFormState = { ok: false };
+const INITIAL_STATE: ActionState = { ok: false };
+
+// Close the inline form as soon as an action returns a fresh success.
+// Adjusting state during render (instead of inside an effect) keeps the
+// submit → close reaction synchronous and lint-clean.
+function useCloseOnSuccess(state: ActionState, close: () => void): void {
+  const [lastState, setLastState] = useState(state);
+  if (state !== lastState) {
+    setLastState(state);
+    if (state.ok) close();
+  }
+}
 
 // "Add category" button in the page header; expands into an inline form.
 export function AddCategoryButton() {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(createCategory, INITIAL_STATE);
 
-  useEffect(() => {
-    if (state.ok) setOpen(false);
-  }, [state.ok]);
+  useCloseOnSuccess(state, () => setOpen(false));
 
   return (
     <div className="relative">
@@ -52,12 +62,12 @@ export function AddCategoryButton() {
           >
             <Icon name="x" className="h-4 w-4" />
           </button>
-          {state.error ? <span className="sr-only">{state.error}</span> : null}
+          {state.message ? <span className="sr-only">{state.message}</span> : null}
         </form>
       )}
-      {open && state.error ? (
+      {open && state.message && !state.ok ? (
         <p role="alert" className="absolute left-0 top-full mt-1 text-xs text-red-600 dark:text-red-400">
-          {state.error}
+          {state.message}
         </p>
       ) : null}
     </div>
@@ -70,9 +80,7 @@ export function RenameCategoryButton({ id, name }: { id: string; name: string })
   const [state, formAction, pending] = useActionState(renameCategory, INITIAL_STATE);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (state.ok) setEditing(false);
-  }, [state.ok]);
+  useCloseOnSuccess(state, () => setEditing(false));
 
   return (
     <div className="relative">
@@ -112,12 +120,12 @@ export function RenameCategoryButton({ id, name }: { id: string; name: string })
           >
             <Icon name="x" className="h-3.5 w-3.5" />
           </button>
-          {state.error ? <span className="sr-only">{state.error}</span> : null}
+          {state.message ? <span className="sr-only">{state.message}</span> : null}
         </form>
       )}
-      {editing && state.error ? (
+      {editing && state.message && !state.ok ? (
         <p role="alert" className="absolute right-0 top-full mt-1 whitespace-nowrap text-xs text-red-600 dark:text-red-400">
-          {state.error}
+          {state.message}
         </p>
       ) : null}
     </div>

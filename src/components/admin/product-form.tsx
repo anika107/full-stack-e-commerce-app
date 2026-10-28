@@ -2,10 +2,12 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { createProduct, updateProduct, deleteProduct, type ProductFormState } from "@/app/admin/(panel)/products/actions";
+import { createProduct, updateProduct, deleteProduct } from "@/app/admin/(panel)/products/actions";
+import type { ActionState } from "@/lib/types";
+import type { ProductDetail } from "@/lib/services";
 import { Icon } from "./icons";
 
-const INITIAL_STATE: ProductFormState = { ok: false };
+const INITIAL_STATE: ActionState = { ok: false };
 
 type CategoryOption = { id: string; name: string };
 
@@ -20,15 +22,7 @@ export function ProductFormPanel({
   mode: "new" | "edit";
   categories: CategoryOption[];
   returnTo: string;
-  initial?: {
-    id: string;
-    name: string;
-    imageUrl: string;
-    description: string;
-    price: number;
-    categoryId: string | null;
-    stock: number;
-  };
+  initial?: ProductDetail;
 }) {
   const action = mode === "new" ? createProduct : updateProduct;
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
@@ -138,9 +132,9 @@ export function ProductFormPanel({
         >
           {pending ? "Saving…" : mode === "new" ? "Add product" : "Save changes"}
         </button>
-        {state.error ? (
+        {state.message && !state.ok ? (
           <p role="alert" className="text-xs text-red-600 dark:text-red-400">
-            {state.error}
+            {state.message}
           </p>
         ) : null}
       </div>
@@ -155,9 +149,9 @@ export function DeleteProductButton({ id, name, returnTo }: { id: string; name: 
 
   return (
     <div className="flex items-center gap-2">
-      {state.error ? (
+      {state.message && !state.ok ? (
         <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-          {state.error}
+          {state.message}
         </span>
       ) : null}
       <form

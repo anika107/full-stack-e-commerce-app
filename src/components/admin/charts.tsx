@@ -1,12 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import type { RevenuePoint } from "@/lib/types";
 
 // Single-series area chart. Marks follow the dataviz skill specs: 2px line,
 // ~10% area wash, 2px surface ring on dots, hairline grid, recessive ink.
 // Colors come from the validated palette tokens in globals.css (--viz-*).
-
-type RevenuePoint = { label: string; value: number };
 
 const W = 640;
 const H = 240;

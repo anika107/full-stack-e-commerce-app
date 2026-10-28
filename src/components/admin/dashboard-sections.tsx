@@ -2,6 +2,8 @@ import Link from "next/link";
 import { RevenueChart } from "./charts";
 import { Badge, STATUS_COLORS } from "./ui/badge";
 import { Td, Th } from "./ui/table";
+import { formatK, formatMoney } from "@/lib/format";
+import { ORDER_STATUS_META } from "@/lib/services";
 import type {
   getLowStock,
   getRecentOrders,
@@ -16,9 +18,6 @@ type RevenueSeries = Awaited<ReturnType<typeof getRevenueSeries>>;
 type RecentOrders = Awaited<ReturnType<typeof getRecentOrders>>;
 type LowStockItems = Awaited<ReturnType<typeof getLowStock>>;
 type TopCategories = Awaited<ReturnType<typeof getTopCategories>>;
-
-const ORDER_TONE = { PAID: "good", PENDING: "warning", REFUNDED: "serious", FAILED: "critical" } as const;
-const ORDER_LABEL = { PAID: "Paid", PENDING: "Pending", REFUNDED: "Refunded", FAILED: "Failed" } as const;
 
 export function RevenueSection({
   series,
@@ -77,10 +76,12 @@ export function RecentOrdersSection({ orders }: { orders: RecentOrders }) {
                 <Td>{order.customer}</Td>
                 <Td className="whitespace-nowrap text-zinc-500 dark:text-zinc-400">{order.date}</Td>
                 <Td>
-                  <Badge tone={ORDER_TONE[order.status]}>{ORDER_LABEL[order.status]}</Badge>
+                  <Badge tone={ORDER_STATUS_META[order.status].tone}>
+                    {ORDER_STATUS_META[order.status].label}
+                  </Badge>
                 </Td>
                 <Td right className="font-medium text-zinc-900 dark:text-zinc-50">
-                  ${order.total.toFixed(2)}
+                  {formatMoney(order.total)}
                 </Td>
               </tr>
             ))}
@@ -157,7 +158,7 @@ export function TopCategoriesSection({ categories }: { categories: TopCategories
                 {category.name}
               </span>
               <span className="tabular-nums text-zinc-500 dark:text-zinc-400">
-                ${(category.revenue / 1000).toFixed(1)}K · {category.share}%
+                {formatK(category.revenue)} · {category.share}%
               </span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">

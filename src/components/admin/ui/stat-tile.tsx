@@ -1,4 +1,5 @@
 import { Icon } from "../icons";
+import type { Kpi } from "@/lib/services";
 
 // 12-point sparkline: de-emphasis hue for the history, accent for the current period.
 function Sparkline({ data }: { data: number[] }) {
@@ -39,16 +40,7 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-export function StatTile({
-  kpi,
-}: {
-  kpi: {
-    label: string;
-    value: string;
-    delta?: { direction: "up" | "down"; good: boolean; text: string; period: string } | null;
-    spark?: number[] | null;
-  };
-}) {
+export function StatTile({ kpi }: { kpi: Kpi }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-3">

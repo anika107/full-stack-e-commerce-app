@@ -3,9 +3,8 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/db";
+import type { ActionState } from "./types";
 import { CART_COOKIE, MAX_QUANTITY, readCartLines, serializeCart, type CartLine } from "./cart";
-
-export type CartActionState = { ok: boolean; message?: string };
 
 const CART_OPTIONS = {
   path: "/",
@@ -29,9 +28,9 @@ async function getStock(productId: string): Promise<number | null> {
 }
 
 export async function addToCart(
-  prevState: CartActionState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<CartActionState> {
+): Promise<ActionState> {
   const productId = String(formData.get("productId") ?? "");
   const requested = Math.min(MAX_QUANTITY, Math.max(1, Number(formData.get("quantity")) || 1));
 
@@ -54,9 +53,9 @@ export async function addToCart(
 }
 
 export async function updateCartQuantity(
-  prevState: CartActionState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<CartActionState> {
+): Promise<ActionState> {
   const productId = String(formData.get("productId") ?? "");
   const quantity = Math.min(MAX_QUANTITY, Math.max(0, Number(formData.get("quantity")) || 0));
 
@@ -73,9 +72,9 @@ export async function updateCartQuantity(
 }
 
 export async function removeFromCart(
-  prevState: CartActionState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<CartActionState> {
+): Promise<ActionState> {
   const productId = String(formData.get("productId") ?? "");
   const lines = await readCartLines();
   await writeCart(lines.filter((line) => line.productId !== productId));

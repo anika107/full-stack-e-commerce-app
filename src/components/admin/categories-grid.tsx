@@ -1,19 +1,10 @@
 import Link from "next/link";
 import { RenameCategoryButton } from "./category-form";
-import { Icon, type IconName } from "./icons";
+import { CATEGORY_ICONS, Icon } from "./icons";
+import { formatK } from "@/lib/format";
 import type { getCategories } from "@/lib/services";
 
 type CategoryRows = Awaited<ReturnType<typeof getCategories>>;
-
-// Presentation mapping for known categories; anything new falls back to a tag.
-const CATEGORY_ICONS: Record<string, IconName> = {
-  Audio: "speaker",
-  Wearables: "watch",
-  "Smart Home": "home",
-  Accessories: "plug",
-  Gaming: "gamepad",
-  Cameras: "camera",
-};
 
 export function CategoriesGrid({ categories }: { categories: CategoryRows }) {
   return (
@@ -38,7 +29,7 @@ export function CategoriesGrid({ categories }: { categories: CategoryRows }) {
 
           <h2 className="mt-4 text-sm font-semibold text-zinc-900 dark:text-zinc-50">{c.name}</h2>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {c.count} products · ${(c.revenue / 1000).toFixed(1)}K revenue
+            {c.count} products · {formatK(c.revenue)} revenue
           </p>
 
           <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">

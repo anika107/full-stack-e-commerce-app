@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/db";
+import type { ActionState } from "@/lib/types";
+import { isPrismaError } from "@/lib/prisma";
 import { verifySession } from "@/lib/services/auth";
-
-export type ProductFormState = { ok: boolean; error?: string };
 
 type ParsedProduct = {
   name: string;
@@ -16,37 +16,37 @@ type ParsedProduct = {
   stock: number;
 };
 
-function parseForm(formData: FormData): ParsedProduct | ProductFormState {
+function parseForm(formData: FormData): ParsedProduct | ActionState {
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { ok: false, error: "Name is required." };
-  if (name.length > 200) return { ok: false, error: "Name must be 200 characters or fewer." };
+  if (!name) return { ok: false, message: "Name is required." };
+  if (name.length > 200) return { ok: false, message: "Name must be 200 characters or fewer." };
 
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
-  if (!imageUrl) return { ok: false, error: "Image URL is required." };
-  if (imageUrl.length > 500) return { ok: false, error: "Image URL must be 500 characters or fewer." };
+  if (!imageUrl) return { ok: false, message: "Image URL is required." };
+  if (imageUrl.length > 500) return { ok: false, message: "Image URL must be 500 characters or fewer." };
   try {
     const parsed = new URL(imageUrl);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return { ok: false, error: "Image URL must start with http:// or https://." };
+      return { ok: false, message: "Image URL must start with http:// or https://." };
     }
   } catch {
-    return { ok: false, error: "Image URL is not a valid URL." };
+    return { ok: false, message: "Image URL is not a valid URL." };
   }
 
   const price = Number(formData.get("price"));
   if (!Number.isFinite(price) || price <= 0) {
-    return { ok: false, error: "Price must be greater than 0." };
+    return { ok: false, message: "Price must be greater than 0." };
   }
 
   const stock = Number(formData.get("stock") ?? 0);
   if (!Number.isInteger(stock) || stock < 0) {
-    return { ok: false, error: "Stock must be a whole number of 0 or more." };
+    return { ok: false, message: "Stock must be a whole number of 0 or more." };
   }
 
   const description = String(formData.get("description") ?? "").trim();
-  if (!description) return { ok: false, error: "Description is required." };
+  if (!description) return { ok: false, message: "Description is required." };
   if (description.length > 2000) {
-    return { ok: false, error: "Description must be 2,000 characters or fewer." };
+    return { ok: false, message: "Description must be 2,000 characters or fewer." };
   }
 
   const categoryId = String(formData.get("categoryId") ?? "");
@@ -67,9 +67,9 @@ function returnTo(formData: FormData): string {
 }
 
 export async function createProduct(
-  prevState: ProductFormState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<ProductFormState> {
+): Promise<ActionState> {
   await verifySession();
   const parsed = parseForm(formData);
   if ("ok" in parsed) return parsed;
@@ -92,12 +92,12 @@ export async function createProduct(
 }
 
 export async function updateProduct(
-  prevState: ProductFormState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<ProductFormState> {
+): Promise<ActionState> {
   await verifySession();
   const id = String(formData.get("id") ?? "");
-  if (!id) return { ok: false, error: "Missing product id." };
+  if (!id) return { ok: false, message: "Missing product id." };
 
   const parsed = parseForm(formData);
   if ("ok" in parsed) return parsed;
@@ -125,12 +125,12 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(
-  prevState: ProductFormState,
+  prevState: ActionState,
   formData: FormData,
-): Promise<ProductFormState> {
+): Promise<ActionState> {
   await verifySession();
   const id = String(formData.get("id") ?? "");
-  if (!id) return { ok: false, error: "Missing product id." };
+  if (!id) return { ok: false, message: "Missing product id." };
 
   try {
     // Inventory first — its FK is Restrict. Order items stay a blocker:
@@ -140,8 +140,8 @@ export async function deleteProduct(
       prisma.product.delete({ where: { id } }),
     ]);
   } catch (error) {
-    if ((error as { code?: string })?.code === "P2003") {
-      return { ok: false, error: "This product has orders and can't be deleted." };
+    if (isPrismaError(error, "P2003")) {
+      return { ok: false, message: "This product has orders and can't be deleted." };
     }
     throw error;
   }

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getPublicCategories, getStorefrontProducts, isProductSort, PRODUCT_SORTS } from "@/lib/services";
+import { getPublicCategories, getStorefrontProducts, PRODUCT_SORTS } from "@/lib/services";
 import { NavSelect } from "@/components/ui/nav-select";
+import { Pagination } from "@/components/ui/pagination";
 import { ProductCard } from "@/components/storefront/product-card";
 import { Icon } from "@/components/admin/icons";
 import { StorefrontGridSkeleton } from "@/components/skeletons";
+import { buildUrl, firstParam } from "@/lib/url";
+import { pageWindow, parsePage } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Shop" };
 
@@ -40,30 +43,29 @@ async function Catalog({
   searchParams: Promise<{ q?: string; category?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const q = params.q?.trim() ?? "";
-  const sort = params.sort && isProductSort(params.sort) ? params.sort : "newest";
-  const page = Math.max(1, Number(params.page) || 1);
-
   const [categories, result] = await Promise.all([
     getPublicCategories(),
-    getStorefrontProducts({ q, category: params.category ?? "all", sort, page, pageSize: PAGE_SIZE }),
+    getStorefrontProducts({
+      q: firstParam(params.q),
+      category: firstParam(params.category),
+      sort: firstParam(params.sort),
+      page: parsePage(firstParam(params.page)),
+      pageSize: PAGE_SIZE,
+    }),
   ]);
 
+  // The service validates q/category/sort and echoes the effective values.
+  const { q, category, sort } = result;
+  const { totalPages } = pageWindow(result.total, result.page, result.pageSize);
   const categoryNames = categories.map((c) => c.name);
-  const category =
-    params.category && categoryNames.includes(params.category) ? params.category : "all";
-  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-  const clampedPage = Math.min(page, totalPages);
 
-  const href = (target: number) => {
-    const search = new URLSearchParams();
-    if (q) search.set("q", q);
-    if (category !== "all") search.set("category", category);
-    if (sort !== "newest") search.set("sort", sort);
-    if (target > 1) search.set("page", String(target));
-    const qs = search.toString();
-    return qs ? `/products?${qs}` : "/products";
-  };
+  const href = (target: number) =>
+    buildUrl("/products", {
+      q: q || undefined,
+      category: category === "all" ? undefined : category,
+      sort: sort === "newest" ? undefined : sort,
+      page: target > 1 ? target : undefined,
+    });
 
   return (
     <div className="space-y-10">
@@ -124,7 +126,7 @@ async function Catalog({
       {result.rows.length > 0 ? (
         <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
           {result.rows.map((p) => (
-            <ProductCard key={p.id} product={p} showNew />
+            <ProductCard key={p.id} product={p} />
           ))}
         </div>
       ) : (
@@ -149,37 +151,13 @@ async function Catalog({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Page {clampedPage} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            {clampedPage > 1 ? (
-              <Link
-                href={href(clampedPage - 1)}
-                className="flex h-9 items-center rounded-full border border-stone-200 px-4 text-xs font-medium text-stone-600 transition-colors hover:border-stone-950 hover:text-stone-950 dark:border-stone-800 dark:text-stone-400 dark:hover:border-stone-50 dark:hover:text-stone-50"
-              >
-                Previous
-              </Link>
-            ) : (
-              <span className="flex h-9 items-center rounded-full border border-stone-200 px-4 text-xs font-medium text-stone-300 dark:border-stone-800 dark:text-stone-600">
-                Previous
-              </span>
-            )}
-            {clampedPage < totalPages ? (
-              <Link
-                href={href(clampedPage + 1)}
-                className="flex h-9 items-center rounded-full border border-stone-200 px-4 text-xs font-medium text-stone-600 transition-colors hover:border-stone-950 hover:text-stone-950 dark:border-stone-800 dark:text-stone-400 dark:hover:border-stone-50 dark:hover:text-stone-50"
-              >
-                Next
-              </Link>
-            ) : (
-              <span className="flex h-9 items-center rounded-full border border-stone-200 px-4 text-xs font-medium text-stone-300 dark:border-stone-800 dark:text-stone-600">
-                Next
-              </span>
-            )}
-          </div>
-        </div>
+        <Pagination
+          total={result.total}
+          page={result.page}
+          pageSize={result.pageSize}
+          hrefFor={href}
+          tone="store"
+        />
       )}
     </div>
   );

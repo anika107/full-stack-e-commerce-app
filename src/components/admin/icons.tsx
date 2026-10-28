@@ -244,3 +244,13 @@ export function Icon({
     </svg>
   );
 }
+
+// Icon mapping for known category names; anything new falls back to a tag.
+export const CATEGORY_ICONS: Record<string, IconName> = {
+  Audio: "speaker",
+  Wearables: "watch",
+  "Smart Home": "home",
+  Accessories: "plug",
+  Gaming: "gamepad",
+  Cameras: "camera",
+};

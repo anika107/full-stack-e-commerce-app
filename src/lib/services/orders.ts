@@ -1,12 +1,32 @@
 import "server-only";
 import { cache } from "react";
 import { prisma } from "@/db";
+import type { PageResult } from "@/lib/types";
+import { formatDate } from "@/lib/format";
 import { verifySession } from "./auth";
+
+export type OrderStatus = "PAID" | "PENDING" | "REFUNDED" | "FAILED";
+
+// Single source for how each status reads and renders across the admin panel.
+export const ORDER_STATUS_META = {
+  PAID: { tone: "good", label: "Paid" },
+  PENDING: { tone: "warning", label: "Pending" },
+  REFUNDED: { tone: "serious", label: "Refunded" },
+  FAILED: { tone: "critical", label: "Failed" },
+} as const satisfies Record<
+  OrderStatus,
+  { tone: "good" | "warning" | "serious" | "critical"; label: string }
+>;
+
+export const ORDER_STATUSES = Object.keys(ORDER_STATUS_META) as OrderStatus[];
+
+export const isOrderStatus = (value: string): value is OrderStatus | "all" =>
+  value === "all" || (ORDER_STATUSES as readonly string[]).includes(value);
 
 export type RecentOrder = {
   id: string;
   customer: string;
-  status: "PAID" | "PENDING" | "REFUNDED" | "FAILED";
+  status: OrderStatus;
   date: string;
   total: number;
 };
@@ -28,17 +48,10 @@ export const getRecentOrders = cache(async (): Promise<RecentOrder[]> => {
     id: order.id.slice(0, 8),
     customer: order.customer.name,
     status: order.status,
-    date: order.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    date: formatDate(order.createdAt),
     total: order.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0),
   }));
 });
-
-export type OrderStatus = "PAID" | "PENDING" | "REFUNDED" | "FAILED";
-
-export const ORDER_STATUSES = ["PAID", "PENDING", "REFUNDED", "FAILED"] as const;
-
-export const isOrderStatus = (value: string): value is OrderStatus | "all" =>
-  value === "all" || (ORDER_STATUSES as readonly string[]).includes(value);
 
 export type OrderRow = {
   id: string;
@@ -50,12 +63,7 @@ export type OrderRow = {
   date: string;
 };
 
-export type OrdersResult = {
-  rows: OrderRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
+export type OrdersResult = PageResult<OrderRow> & { status: OrderStatus | "all" };
 
 export const getOrders = cache(
   async ({
@@ -63,12 +71,14 @@ export const getOrders = cache(
     page = 1,
     pageSize = 20,
   }: {
-    status?: OrderStatus | "all";
+    status?: string;
     page?: number;
     pageSize?: number;
   }): Promise<OrdersResult> => {
     await verifySession();
-    const where = status === "all" ? {} : { status };
+    const effectiveStatus: OrderStatus | "all" =
+      status && isOrderStatus(status) ? status : "all";
+    const where = effectiveStatus === "all" ? {} : { status: effectiveStatus };
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -93,15 +103,12 @@ export const getOrders = cache(
         items: order.items.reduce((sum, item) => sum + item.quantity, 0),
         total: order.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0),
         status: order.status,
-        date: order.createdAt.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
+        date: formatDate(order.createdAt),
       })),
       total,
       page,
       pageSize,
+      status: effectiveStatus,
     };
   },
 );

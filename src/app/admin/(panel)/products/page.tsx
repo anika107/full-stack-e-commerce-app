@@ -7,6 +7,8 @@ import { ProductsTable } from "@/components/admin/products-table";
 import { Icon } from "@/components/admin/icons";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { ProductsSkeleton } from "@/components/skeletons";
+import { buildUrl, firstParam } from "@/lib/url";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -30,27 +32,28 @@ async function Products({
   searchParams: Promise<{ q?: string; category?: string; page?: string; new?: string; edit?: string }>;
 }) {
   const params = await searchParams;
-  const q = params.q?.trim() ?? "";
-  const page = Math.max(1, Number(params.page) || 1);
 
   const [categories, result] = await Promise.all([
     getCategories(),
-    getProducts({ q, category: params.category ?? "all", page, pageSize: PAGE_SIZE }),
+    getProducts({
+      q: firstParam(params.q),
+      category: firstParam(params.category),
+      page: parsePage(firstParam(params.page)),
+      pageSize: PAGE_SIZE,
+    }),
   ]);
 
+  // The service validates q/category and echoes the effective values.
+  const { q, category, page } = result;
   const categoryNames = categories.map((c) => c.name);
-  const category =
-    params.category && categoryNames.includes(params.category) ? params.category : "all";
 
-  const href = (extra: Record<string, string> = {}) => {
-    const search = new URLSearchParams();
-    if (q) search.set("q", q);
-    if (category !== "all") search.set("category", category);
-    if (page > 1) search.set("page", String(page));
-    for (const [key, value] of Object.entries(extra)) search.set(key, value);
-    const qs = search.toString();
-    return qs ? `/admin/products?${qs}` : "/admin/products";
-  };
+  const href = (extra: Record<string, string> = {}) =>
+    buildUrl("/admin/products", {
+      q: q || undefined,
+      category: category === "all" ? undefined : category,
+      page: page > 1 ? page : undefined,
+      ...extra,
+    });
 
   const returnTo = href();
   const editing = params.edit ? await getProductById(params.edit) : undefined;
@@ -86,7 +89,7 @@ async function Products({
         )
       ) : null}
 
-      <ProductsTable result={result} q={q} category={category} categoryNames={categoryNames} />
+      <ProductsTable result={result} categoryNames={categoryNames} />
     </div>
   );
 }

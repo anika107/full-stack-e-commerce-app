@@ -7,7 +7,7 @@ import { AddToCart } from "@/components/storefront/add-to-cart";
 import { ProductImage } from "@/components/storefront/product-image";
 import { Icon } from "@/components/admin/icons";
 import { ProductDetailSkeleton } from "@/components/skeletons";
-import { formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Product" };
 
@@ -119,11 +119,7 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
             <div className="flex justify-between gap-4">
               <dt className="text-stone-500 dark:text-stone-400">Added to store</dt>
               <dd className="font-medium text-stone-900 dark:text-stone-50">
-                {product.createdAt.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDate(product.createdAt)}
               </dd>
             </div>
             <div className="flex justify-between gap-4">

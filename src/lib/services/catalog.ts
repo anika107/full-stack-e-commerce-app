@@ -2,6 +2,9 @@ import "server-only";
 import { cache } from "react";
 import { connection } from "next/server";
 import { prisma } from "@/db";
+import type { ProductGetPayload, ProductSelect } from "@/generated/prisma/models/Product";
+import type { PageResult } from "@/lib/types";
+import { formatDate } from "@/lib/format";
 import { verifySession } from "./auth";
 
 export type LowStockItem = { id: string; name: string };
@@ -111,11 +114,7 @@ export const getInventory = cache(async (): Promise<InventoryRow[]> => {
     name: item.product.name,
     category: item.product.category?.name ?? "Uncategorized",
     quantity: item.quantity,
-    updated: item.updatedAt.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
+    updated: formatDate(item.updatedAt),
   }));
 });
 
@@ -131,13 +130,14 @@ export type StorefrontProduct = {
   category: string;
   stock: number;
   createdAt: Date;
+  // Set when the query wants the "recently added" flag for card badges.
+  isNew?: boolean;
 };
 
-export type StorefrontProductsResult = {
-  rows: StorefrontProduct[];
-  total: number;
-  page: number;
-  pageSize: number;
+export type StorefrontProductsResult = PageResult<StorefrontProduct> & {
+  q: string;
+  category: string;
+  sort: ProductSort;
 };
 
 export type ProductSort = "newest" | "price-asc" | "price-desc";
@@ -150,6 +150,46 @@ export const PRODUCT_SORTS: Record<ProductSort, { label: string }> = {
 
 export const isProductSort = (value: string): value is ProductSort => value in PRODUCT_SORTS;
 
+const NEW_WINDOW_DAYS = 30;
+const NEW_WINDOW_MS = NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+// Shared select + row mapper for the storefront product queries.
+const storefrontProductSelect = {
+  id: true,
+  name: true,
+  imageUrl: true,
+  description: true,
+  price: true,
+  createdAt: true,
+  category: { select: { name: true } },
+  inventory: { select: { quantity: true } },
+} satisfies ProductSelect;
+
+type StorefrontProductRow = ProductGetPayload<{ select: typeof storefrontProductSelect }>;
+
+const toStorefrontProduct = (p: StorefrontProductRow, now?: Date): StorefrontProduct => ({
+  id: p.id,
+  name: p.name,
+  imageUrl: p.imageUrl,
+  description: p.description,
+  price: Number(p.price),
+  category: p.category?.name ?? "Uncategorized",
+  stock: p.inventory?.quantity ?? 0,
+  createdAt: p.createdAt,
+  ...(now ? { isNew: p.createdAt.getTime() > now.getTime() - NEW_WINDOW_MS } : {}),
+});
+
+// Shared name/category filter for product listings.
+const productFilter = ({ q, category }: { q: string; category: string }) => ({
+  ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+  ...(category !== "all" ? { category: { name: category } } : {}),
+});
+
+// Validate a category filter against the real category list (deduped with the
+// page's own fetch via React.cache), falling back to "all".
+const resolveCategory = (category: string, names: string[]): string =>
+  category === "all" || names.includes(category) ? category : "all";
+
 export const getStorefrontProducts = cache(
   async ({
     q = "",
@@ -160,18 +200,22 @@ export const getStorefrontProducts = cache(
   }: {
     q?: string;
     category?: string;
-    sort?: ProductSort;
+    sort?: string;
     page?: number;
     pageSize?: number;
   }): Promise<StorefrontProductsResult> => {
-    const where = {
-      ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
-      ...(category !== "all" ? { category: { name: category } } : {}),
-    };
+    await connection();
+    const now = new Date();
+    const effectiveQ = q.trim();
+    const effectiveSort: ProductSort = sort && isProductSort(sort) ? sort : "newest";
+    const categoryNames = (await getPublicCategories()).map((c) => c.name);
+    const effectiveCategory = resolveCategory(category, categoryNames);
+
+    const where = productFilter({ q: effectiveQ, category: effectiveCategory });
     const orderBy =
-      sort === "price-asc"
+      effectiveSort === "price-asc"
         ? { price: "asc" as const }
-        : sort === "price-desc"
+        : effectiveSort === "price-desc"
           ? { price: "desc" as const }
           : { createdAt: "desc" as const };
     const [products, total] = await Promise.all([
@@ -180,33 +224,18 @@ export const getStorefrontProducts = cache(
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        select: {
-          id: true,
-          name: true,
-          imageUrl: true,
-          description: true,
-          price: true,
-          createdAt: true,
-          category: { select: { name: true } },
-          inventory: { select: { quantity: true } },
-        },
+        select: storefrontProductSelect,
       }),
       prisma.product.count({ where }),
     ]);
     return {
-      rows: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        imageUrl: p.imageUrl,
-        description: p.description,
-        price: Number(p.price),
-        category: p.category?.name ?? "Uncategorized",
-        stock: p.inventory?.quantity ?? 0,
-        createdAt: p.createdAt,
-      })),
+      rows: products.map((p) => toStorefrontProduct(p, now)),
       total,
       page,
       pageSize,
+      q: effectiveQ,
+      category: effectiveCategory,
+      sort: effectiveSort,
     };
   },
 );
@@ -214,28 +243,9 @@ export const getStorefrontProducts = cache(
 export const getProductDetail = cache(async (id: string): Promise<StorefrontProduct | null> => {
   const product = await prisma.product.findUnique({
     where: { id },
-    select: {
-      id: true,
-      name: true,
-      imageUrl: true,
-      description: true,
-      price: true,
-      createdAt: true,
-      category: { select: { name: true } },
-      inventory: { select: { quantity: true } },
-    },
+    select: storefrontProductSelect,
   });
-  if (!product) return null;
-  return {
-    id: product.id,
-    name: product.name,
-    imageUrl: product.imageUrl,
-    description: product.description,
-    price: Number(product.price),
-    category: product.category?.name ?? "Uncategorized",
-    stock: product.inventory?.quantity ?? 0,
-    createdAt: product.createdAt,
-  };
+  return product ? toStorefrontProduct(product) : null;
 });
 
 // "Featured" = best sellers by units ordered; "new arrivals" = newest listings.
@@ -250,59 +260,24 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<StorefrontPr
   });
   const products = await prisma.product.findMany({
     where: { id: { in: bestSellers.map((row) => row.productId) } },
-    select: {
-      id: true,
-      name: true,
-      imageUrl: true,
-      description: true,
-      price: true,
-      createdAt: true,
-      category: { select: { name: true } },
-      inventory: { select: { quantity: true } },
-    },
+    select: storefrontProductSelect,
   });
   const byId = new Map(products.map((p) => [p.id, p]));
   return bestSellers
     .map((row) => byId.get(row.productId))
-    .filter((p): p is NonNullable<typeof p> => Boolean(p))
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      imageUrl: p.imageUrl,
-      description: p.description,
-      price: Number(p.price),
-      category: p.category?.name ?? "Uncategorized",
-      stock: p.inventory?.quantity ?? 0,
-      createdAt: p.createdAt,
-    }));
+    .filter((p): p is StorefrontProductRow => Boolean(p))
+    .map((p) => toStorefrontProduct(p));
 });
 
 export const getNewArrivals = cache(async (limit = 4): Promise<StorefrontProduct[]> => {
   await connection();
+  const now = new Date();
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      name: true,
-      imageUrl: true,
-      description: true,
-      price: true,
-      createdAt: true,
-      category: { select: { name: true } },
-      inventory: { select: { quantity: true } },
-    },
+    select: storefrontProductSelect,
   });
-  return products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    imageUrl: p.imageUrl,
-    description: p.description,
-    price: Number(p.price),
-    category: p.category?.name ?? "Uncategorized",
-    stock: p.inventory?.quantity ?? 0,
-    createdAt: p.createdAt,
-  }));
+  return products.map((p) => toStorefrontProduct(p, now));
 });
 
 export type PublicCategory = { id: string; name: string; count: number };
@@ -316,15 +291,6 @@ export const getPublicCategories = cache(async (): Promise<PublicCategory[]> => 
   return categories.map((c) => ({ id: c.id, name: c.name, count: c._count.products }));
 });
 
-export const getProductCategories = cache(async (): Promise<string[]> => {
-  await verifySession();
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    select: { name: true },
-  });
-  return categories.map((c) => c.name);
-});
-
 export type ProductRow = {
   id: string;
   name: string;
@@ -335,12 +301,7 @@ export type ProductRow = {
   updated: string;
 };
 
-export type ProductsResult = {
-  rows: ProductRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
+export type ProductsResult = PageResult<ProductRow> & { q: string; category: string };
 
 export const getProducts = cache(
   async ({
@@ -355,10 +316,11 @@ export const getProducts = cache(
     pageSize?: number;
   }): Promise<ProductsResult> => {
     await verifySession();
-    const where = {
-      ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
-      ...(category !== "all" ? { category: { name: category } } : {}),
-    };
+    const effectiveQ = q.trim();
+    const categoryNames = (await getCategories()).map((c) => c.name);
+    const effectiveCategory = resolveCategory(category, categoryNames);
+
+    const where = productFilter({ q: effectiveQ, category: effectiveCategory });
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -385,15 +347,13 @@ export const getProducts = cache(
         category: p.category?.name ?? "Uncategorized",
         price: Number(p.price),
         stock: p.inventory?.quantity ?? 0,
-        updated: (p.inventory?.updatedAt ?? p.createdAt).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
+        updated: formatDate(p.inventory?.updatedAt ?? p.createdAt),
       })),
       total,
       page,
       pageSize,
+      q: effectiveQ,
+      category: effectiveCategory,
     };
   },
 );

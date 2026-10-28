@@ -2,6 +2,9 @@ import "server-only";
 import { cache } from "react";
 import { connection } from "next/server";
 import { prisma } from "@/db";
+import type { OrderGetPayload } from "@/generated/prisma/models/Order";
+import type { RevenuePoint } from "@/lib/types";
+import { formatCompactMoney } from "@/lib/format";
 import { verifySession } from "./auth";
 
 export type RangeKey = "7d" | "30d" | "90d" | "12m";
@@ -17,15 +20,19 @@ export const isRangeKey = (value: string): value is RangeKey => value in RANGES;
 
 // Shared source for every dashboard number: one query per request covers the
 // KPIs, the revenue chart, and the top-categories list.
-type StatsOrder = {
-  createdAt: Date;
-  status: "PAID" | "PENDING" | "REFUNDED" | "FAILED";
-  items: {
-    quantity: number;
-    unitPrice: unknown;
-    product: { category: { name: string } | null };
-  }[];
-};
+type StatsOrder = OrderGetPayload<{
+  select: {
+    createdAt: true;
+    status: true;
+    items: {
+      select: {
+        quantity: true;
+        unitPrice: true;
+        product: { select: { category: { select: { name: true } } } };
+      };
+    };
+  };
+}>;
 
 const getStatsOrders = cache(async (): Promise<StatsOrder[]> => {
   await verifySession();
@@ -44,7 +51,7 @@ const getStatsOrders = cache(async (): Promise<StatsOrder[]> => {
         },
       },
     },
-  }) as Promise<StatsOrder[]>;
+  });
 });
 
 const orderTotal = (order: StatsOrder) =>
@@ -70,9 +77,6 @@ const bucketByMonth = (orders: StatsOrder[]) => {
 
 const paidRevenue = (list: StatsOrder[]) =>
   list.filter((o) => o.status === "PAID").reduce((sum, o) => sum + orderTotal(o), 0);
-
-const formatCompact = (value: number) =>
-  value >= 1000 ? `$${(value / 1000).toFixed(1)}K` : `$${Math.round(value)}`;
 
 const pctDelta = (current: number, previous: number) => {
   if (previous <= 0) return null;
@@ -136,7 +140,7 @@ export const getDashboardKpis = cache(async (rangeKey: RangeKey): Promise<Kpi[]>
   return [
     {
       label: "Total revenue",
-      value: formatCompact(revenue),
+      value: formatCompactMoney(revenue),
       delta: delta(revenue, prevRevenue),
       spark: revenueSpark.map((v) => v / 1000),
     },
@@ -166,8 +170,7 @@ export const getDashboardKpis = cache(async (rangeKey: RangeKey): Promise<Kpi[]>
   ];
 });
 
-export type RevenuePoint = { label: string; value: number };
-
+// Chart values are pre-scaled to whole thousands with one decimal.
 const roundK = (value: number) => Math.round((value / 1000) * 10) / 10;
 
 export const getRevenueSeries = cache(async (rangeKey: RangeKey): Promise<RevenuePoint[]> => {
@@ -201,6 +204,8 @@ export const getRevenueSeries = cache(async (rangeKey: RangeKey): Promise<Revenu
     return { label, value: roundK(paidRevenue(bucketOrders)) };
   });
 });
+
+export type { RevenuePoint };
 
 export type TopCategory = { name: string; revenue: number; share: number };
 

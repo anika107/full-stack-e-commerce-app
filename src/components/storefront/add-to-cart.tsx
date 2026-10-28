@@ -3,10 +3,11 @@
 import { useState, useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { addToCart, type CartActionState } from "@/lib/cart-actions";
+import { addToCart } from "@/lib/cart-actions";
+import type { ActionState } from "@/lib/types";
 import { Icon } from "@/components/admin/icons";
 
-const INITIAL_STATE: CartActionState = { ok: false };
+const INITIAL_STATE: ActionState = { ok: false };
 
 export function AddToCart({ productId, stock }: { productId: string; stock: number }) {
   const [quantity, setQuantity] = useState(1);

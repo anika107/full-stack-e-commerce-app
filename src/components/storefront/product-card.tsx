@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ProductImage } from "./product-image";
 import { formatMoney } from "@/lib/format";
 
+// Presentational card. The "New" flag is computed server-side in the catalog
+// service so rendering stays pure (no Date.now during render).
 type CardProduct = {
   id: string;
   name: string;
@@ -9,23 +11,10 @@ type CardProduct = {
   price: number;
   category: string;
   stock: number;
-  createdAt?: Date;
+  isNew?: boolean;
 };
 
-const NEW_WINDOW_DAYS = 30;
-
-export function ProductCard({
-  product,
-  showNew = false,
-}: {
-  product: CardProduct;
-  showNew?: boolean;
-}) {
-  const isNew =
-    showNew &&
-    product.createdAt &&
-    product.createdAt.getTime() > Date.now() - NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-
+export function ProductCard({ product }: { product: CardProduct }) {
   return (
     <Link
       href={`/products/${product.id}`}
@@ -38,7 +27,7 @@ export function ProductCard({
           imageUrl={product.imageUrl}
           className="aspect-4/5 w-full transition-transform duration-500 group-hover:scale-[1.04]"
         />
-        {isNew ? (
+        {product.isNew ? (
           <span className="absolute left-3 top-3 rounded-full bg-stone-950/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-white backdrop-blur">
             New
           </span>

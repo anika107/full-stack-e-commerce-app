@@ -2,12 +2,20 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { removeFromCart, updateCartQuantity, type CartActionState } from "@/lib/cart-actions";
+import { removeFromCart, updateCartQuantity } from "@/lib/cart-actions";
+import type { CartItem } from "@/lib/cart";
+import type { ActionState } from "@/lib/types";
 import { formatMoney } from "@/lib/format";
 import { ProductImage } from "./product-image";
 import { Icon } from "@/components/admin/icons";
 
-const INITIAL_STATE: CartActionState = { ok: false };
+const INITIAL_STATE: ActionState = { ok: false };
+
+// Everything the line renders, minus the derived lineTotal.
+type CartLineItemProps = Pick<
+  CartItem,
+  "productId" | "name" | "imageUrl" | "category" | "price" | "stock" | "quantity" | "available"
+>;
 
 export function CartLineItem({
   productId,
@@ -18,16 +26,7 @@ export function CartLineItem({
   stock,
   quantity,
   available,
-}: {
-  productId: string;
-  name: string;
-  imageUrl: string;
-  category: string;
-  price: number;
-  stock: number;
-  quantity: number;
-  available: boolean;
-}) {
+}: CartLineItemProps) {
   const [removeState, removeAction] = useActionState(removeFromCart, INITIAL_STATE);
   const [updateState, updateAction] = useActionState(updateCartQuantity, INITIAL_STATE);
 
